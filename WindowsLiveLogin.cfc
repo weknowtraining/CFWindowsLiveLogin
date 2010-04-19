@@ -1,4 +1,34 @@
-<cfcomponent>
+<cfcomponent displayname="Windows Live Login" 
+  description="Windows Live ID Web Authentication SDK">
+
+  <!--- constructor --->
+  <cffunction name="init" access="public" output="no" returnType="WindowsLiveLogin"
+    description="Initialize the WindowsLiveLogin module">
+    <!--- private variables --->
+    <cfset Variables.log = false>
+    
+    <cfreturn This>
+  </cffunction>
+
+  <!--- debugging --->
+  <cffunction name="setDebug" access="public" output="no" returnType="void">
+    <cfargument name="logenabled" required="yes" type="boolean">
+    <cfset Variables.log = logenabled>
+  </cffunction>
+  
+  <cffunction name="debug" access="private" output="no" returnType="void">
+    <cfargument name="error" required="yes" type="string">
+    <cfargument name="error_type" required="no" type="string" default="Warning">
+    <cfif Variables.log>
+      <cflog text="#error#" file="WindowsLiveLogin" type="#error_type#">
+    </cfif>
+  </cffunction>
+
+  <cffunction name="fatal" access="private" output="no" returnType="void">
+    <cfargument name="error" required="yes" type="string">
+    <cfset debug(error, "Fatal")>
+    <cfthrow type="WLLError" message="#error#">
+  </cffunction>
 
   <cffunction name="decodeToken" access="public" output="no" returnType="string"
     description="Decodes the given token string." 
@@ -9,6 +39,10 @@
     <cfargument name="crypt_key" required="yes" type="string">
     <cfscript>  
     token_bytes = BinaryDecode(URLDecode(stoken), "base64");
+
+    if(ArrayLen(token_bytes) lte 16 or ((ArrayLen(token_bytes) mod 16) neq 0)) {
+      debug("Error: decodeToken: Attempted to decode invalid token.");
+    }
 
     Arrays = CreateObject("java", "java.util.Arrays");
     iv = Arrays.copyOf(token_bytes, 16);
@@ -25,7 +59,7 @@
     <cfargument name="secret" required="yes" type="string">
     <cfargument name="prefix" required="yes" type="string">
     <cfscript>
-    keyLen = 16;
+    var keyLen = 16;
     key = prefix & secret;
     digest = BinaryDecode(Hash(key, "SHA-256"), "hex");
     Arrays = CreateObject("java", "java.util.Arrays");
