@@ -110,24 +110,57 @@
   <!--- TODO: getConsentUrl, getRefreshConsentTokenUrl, getManageConsentUrl, processConsent,
     processConsentToken, refreshConsentToken, refreshConsentToken2 --->
   
+  <cffunction name="decodeAndValidateToken" access="public" output="no" returnType="string"
+    description="Decodes and validates the token.">
+    <cfargument name="token" required="yes" type="string">
+    <cfargument name="cryptkey" required="no" type="string" default="">
+    <cfargument name="signkey" required="no" type="string" default="">
+    
+    <cfscript>
+    var stoken = '';
+    
+    if(Len(cryptkey) eq 0) { cryptkey = Variables.cryptKey; }
+    if(Len(signkey) eq 0) { signkey = Variables.signKey; }
+    
+    // TODO: old secret
+    
+    stoken = decodeToken(token, cryptkey);
+    if(Len(stoken)) {
+      // stoken = validateToken(stoken, signkey);
+    }
+    return stoken;
+    </cfscript>
+  
+  </cffunction>
+  
+  
   <cffunction name="decodeToken" access="public" output="no" returnType="string"
-    description="Decodes the given token string." 
-    hint="First, the string is URL-unescaped and base64 decoded.
-          Second, the IV is extracted from the first 16 bytes of the string.
-          Finally, the string is decrypted using the encryption key.">
+    description="Decodes the given token string.">
     <cfargument name="stoken" required="yes" type="string">
-    <cfargument name="crypt_key" required="yes" type="string">
-    <cfscript>  
-    token_bytes = BinaryDecode(URLDecode(stoken), "base64");
+    <cfargument name="cryptkey" required="no" type="string" default="">
+    <cfscript>
+    var iv = ''; var crypted = ''; var decoded_token = ''; var token_bytes = '';
 
+    // use cryptKey instance variable if not passed in
+    if(Len(cryptkey) eq 0) {
+      cryptkey = Variables.cryptKey;
+      if(Len(cryptkey) eq 0) {
+        fatal("Error: decodeToken: Secret key was not set. Aborting.");
+      }
+    }
+    
+    // URL-unescape and base64 decode
+    token_bytes = BinaryDecode(URLDecode(stoken), "base64");
     if(ArrayLen(token_bytes) lte 16 or ((ArrayLen(token_bytes) mod 16) neq 0)) {
       debug("Error: decodeToken: Attempted to decode invalid token.");
     }
-
+    
+    // extract IV from the first 16 bytes of the string
     iv = BinaryLeft(token_bytes, 16);
     crypted = BinaryRight(token_bytes, ArrayLen(token_bytes) - 16);
 
-    decoded_token = DecryptBinary(crypted, crypt_key, "AES/CBC/PKCS5Padding", iv);
+    // decrypt using the encryption key
+    decoded_token = DecryptBinary(crypted, cryptkey, "AES/CBC/PKCS5Padding", iv);
     return ToString(decoded_token);    
     </cfscript>
   </cffunction>
