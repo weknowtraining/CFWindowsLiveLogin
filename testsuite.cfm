@@ -6,7 +6,8 @@
 
 <cfscript>
 testSuite = createObject("component","mxunit.framework.TestSuite").TestSuite();
-testSuite.addAll("udf_binary_test");
+testSuite.addAll("tests.WindowsLiveLoginTest");
+testSuite.addAll("tests.udf_binary_test");
 results = testSuite.run();
 </cfscript>
 

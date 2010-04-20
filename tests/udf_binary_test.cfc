@@ -1,4 +1,4 @@
-<cfcomponent displayname="Binary Test" extends="mxunit.framework.TestCase">
+<cfcomponent displayname="BinaryTest" extends="mxunit.framework.TestCase">
 
   <cfinclude template="../udf_binary.cfm">
   

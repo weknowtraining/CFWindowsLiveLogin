@@ -3,35 +3,113 @@
 
   <cfinclude template="udf_binary.cfm">
 
-  <!--- constructor --->
-  <cffunction name="init" access="public" output="no" returnType="WindowsLiveLogin"
-    description="Initialize the WindowsLiveLogin module">
-    <!--- private variables --->
-    <cfset Variables.log = false>
-    
-    <cfreturn This>
-  </cffunction>
-
   <!--- debugging --->
   <cffunction name="setDebug" access="public" output="no" returnType="void">
-    <cfargument name="logenabled" required="yes" type="boolean">
-    <cfset Variables.log = logenabled>
+    <cfargument name="log_enabled" required="yes" type="boolean">
+    <cfset Variables.log_enabled = log_enabled>
   </cffunction>
-  
+
   <cffunction name="debug" access="private" output="no" returnType="void">
     <cfargument name="error" required="yes" type="string">
     <cfargument name="error_type" required="no" type="string" default="Warning">
-    <cfif Variables.log>
+    <cfif Variables.log_enabled>
       <cflog text="#error#" file="WindowsLiveLogin" type="#error_type#">
     </cfif>
   </cffunction>
 
   <cffunction name="fatal" access="private" output="no" returnType="void">
     <cfargument name="error" required="yes" type="string">
-    <cfset debug(error, "Fatal")>
+    <cfscript>debug(error, "Fatal");</cfscript>
     <cfthrow type="WLLError" message="#error#">
   </cffunction>
+  
+  <!--- constructor/accessors --->
+  <cffunction name="init" access="public" output="no" returnType="WindowsLiveLogin"
+    description="Initialize the WindowsLiveLogin module with the application ID,
+                 secret key, and security algorithm.">
+    <cfargument name="appid" required="no" type="string" default="">
+    <cfargument name="secret" required="no" type="string" default="">
+    <cfargument name="security_algorithm" required="no" type="string" default="">
+    <!--- private variables --->
+    <cfscript>
+    Variables.log_enabled = false;
+    Variables.appid = "";
+    Variables.cryptKey = "";
+    Variables.signKey = "";
+    Variables.securityAlgorithm = "";
+    
+    if(Len(appid)) { setAppId(appid); }
+    if(Len(secret)) { setSecret(secret); }
+    if(Len(security_algorithm)) { setSecurityAlgorithm(security_algorithm); }
+    </cfscript>
+    <cfreturn This>
+  </cffunction>
 
+  <cffunction name="setAppId" access="public" output="no" returnType="void"
+    description="Sets the application ID. Use this method if you did not specify
+                 an application ID at initialization.">
+    <cfargument name="appid" required="yes" type="string">
+    <cfscript>
+    if( REFind("^\w+$", appid) eq 0) {
+      fatal("Error: setAppId: Application ID must be alpha-numeric: " & appid);
+    }
+    Variables.appid = appid;
+    </cfscript>
+  </cffunction>
+  
+  <cffunction name="getAppId" access="public" output="no" returnType="string"
+    description="Returns the application ID.">
+    <cfscript>
+    if( Len(Variables.appid) eq 0) {
+      fatal("Error: getAppId: Application ID was not set. Aborting.");
+    }
+    return Variables.appid;
+    </cfscript>
+  </cffunction>
+  
+  <cffunction name="setSecret" access="public" output="no" returnType="void"
+    description="Sets the application ID. Use this method if you did not specify
+                 an application ID at initialization.">
+    <cfargument name="secret" required="yes" type="string">
+    <cfscript>
+    if(Len(secret) lt 16) {
+      fatal("Error: setSecret: Secret must at least 16 characters.");
+    }
+    Variables.signKey = derive(secret, "SIGNATURE");
+    Variables.cryptKey = derive(secret, "ENCRYPTION");
+    </cfscript>
+  </cffunction>
+  
+  <!--- TODO: setOldSecret, setOldSecretExpiry, getOldSecretExpiry --->
+  
+  <cfscript>
+  function setSecurityAlgorithm(sa) {
+    Variables.securityAlgorithm = sa;
+  }
+  
+  function getSecurityAlgorithm() {
+    if(Len(Variables.securityAlgorithm) gt 0) {
+      return Variables.securityAlgorithm;
+    }
+    else {
+      return "wsignin1.0";
+    }
+  }
+  </cfscript>
+  
+  <!--- TODO: set/get PolicyUrl, ReturnUrl, BaseUrl, SecureUrl, ConsentBaseUrl --->
+  
+  <!--- processLogin --->
+  
+  <!--- TODO: getLoginUrl, getLogoutUrl --->
+  
+  <!--- processToken --->
+  
+  <!--- TODO: getClearCookieResponse --->
+  
+  <!--- TODO: getConsentUrl, getRefreshConsentTokenUrl, getManageConsentUrl, processConsent,
+    processConsentToken, refreshConsentToken, refreshConsentToken2 --->
+  
   <cffunction name="decodeToken" access="public" output="no" returnType="string"
     description="Decodes the given token string." 
     hint="First, the string is URL-unescaped and base64 decoded.
