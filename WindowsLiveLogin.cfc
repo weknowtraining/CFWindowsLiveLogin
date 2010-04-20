@@ -1,6 +1,8 @@
 <cfcomponent displayname="Windows Live Login" 
   description="Windows Live ID Web Authentication SDK">
 
+  <cfinclude template="udf_binary.cfm">
+
   <!--- constructor --->
   <cffunction name="init" access="public" output="no" returnType="WindowsLiveLogin"
     description="Initialize the WindowsLiveLogin module">
@@ -44,9 +46,8 @@
       debug("Error: decodeToken: Attempted to decode invalid token.");
     }
 
-    Arrays = CreateObject("java", "java.util.Arrays");
-    iv = Arrays.copyOf(token_bytes, 16);
-    crypted = Arrays.copyOfRange(token_bytes, 16, ArrayLen(token_bytes));
+    iv = BinaryLeft(token_bytes, 16);
+    crypted = BinaryRight(token_bytes, ArrayLen(token_bytes) - 16);
 
     decoded_token = DecryptBinary(crypted, crypt_key, "AES/CBC/PKCS5Padding", iv);
     return ToString(decoded_token);    
@@ -59,11 +60,9 @@
     <cfargument name="secret" required="yes" type="string">
     <cfargument name="prefix" required="yes" type="string">
     <cfscript>
-    var keyLen = 16;
-    key = prefix & secret;
-    digest = BinaryDecode(Hash(key, "SHA-256"), "hex");
-    Arrays = CreateObject("java", "java.util.Arrays");
-    crypt_key = Arrays.copyOf(digest, keyLen);
+    var key = prefix & secret;
+    var digest = BinaryDecode(Hash(key, "SHA-256"), "hex");
+    var crypt_key = BinaryLeft(digest, 16);
     return ToBase64(crypt_key);
     </cfscript>
   </cffunction>
