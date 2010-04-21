@@ -176,7 +176,7 @@
       return error;
     }
     
-    // unix time stamp
+    // unix time stamp (last authenticated at)
     user.timestamp = '';
     if(StructKeyExists(parsed, 'ts')) {
       if( IsNumeric(parsed.ts) and parsed.ts gt 0 ) {   // TODO: integers only
@@ -213,8 +213,16 @@
       
   </cffunction>
 
-  <!--- TODO: getClearCookieResponse --->
-  
+  <!--- TODO:  --->
+  <cffunction name="getClearCookieResponse" access="public" output="no" returnType="binary"
+    description="Returns an appropriate response to signify a successful sign-out.">
+   
+    <cfscript>
+    var content = "R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAEALAAAAAABAAEAAAIBTAA7";
+    return ToBinary(content);
+    </cfscript>
+  </cffunction>
+   
   <!--- TODO: getConsentUrl, getRefreshConsentTokenUrl, getManageConsentUrl, processConsent,
     processConsentToken, refreshConsentToken, refreshConsentToken2 --->
   
