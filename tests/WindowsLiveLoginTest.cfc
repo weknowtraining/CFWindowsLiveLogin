@@ -74,6 +74,37 @@
     wll.decodeToken(stoken);
   }
   
+  // parse
+  function testParse() {
+    q = "appid=1&uid=2&ts=3&sig=x/y=";
+    s = live.parse(q);
+    assertEquals(4, StructCount(s));
+    assertEquals("1", s.appid);
+    assertEquals("2", s.uid);
+    assertEquals("3", s.ts);
+    assertEquals("x/y=", s.sig);
+  }
+  
+  // processToken
+  function testProcessToken() {
+    var user = live.processToken(stoken);
+    assertTrue(user.valid);
+    assertEquals("cb6758ecf06821bade130e77e1702c4b", user.uid);
+    assertEquals(1271446184, user.timestamp);
+  }
+  
+  function testProcessTokenBadAppId() {
+    live.setAppId("somethingelse");
+    var user = live.processToken(stoken);
+    assertFalse(user.valid);
+    assertTrue(FindNoCase("did not match application ID", user.error), "error message match");
+  }
+  
+  function testProcessTokenEmpty() {
+    var user = live.processToken("");
+    assertFalse(user.valid);
+  }
+  
   </cfscript>
 
 </cfcomponent>

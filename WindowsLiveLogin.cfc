@@ -99,12 +99,87 @@
   
   <!--- TODO: set/get PolicyUrl, ReturnUrl, BaseUrl, SecureUrl, ConsentBaseUrl --->
   
-  <!--- processLogin --->
+  <!--- TODO: processLogin --->
   
   <!--- TODO: getLoginUrl, getLogoutUrl --->
   
-  <!--- processToken --->
-  
+  <cffunction name="processToken" access="public" output="no" returnType="struct"
+    description="Decodes and validates the token.">
+    <cfargument name="token" required="yes" type="string">
+    <cfargument name="context" required="no" type="string" default="">
+      
+    <cfscript>
+    var decodedToken = '';
+    var user = StructNew(); 
+    var error = StructNew(); error.valid = false;
+    var appid = '';
+    
+    if(Len(token) eq 0) {
+      error.error = 'Error: processToken: Invalid token specified.';
+      debug(error.error);
+      return error;
+    }
+    
+    decodedToken = decodeAndValidateToken(token);
+    //if(Len(decodedToken) eq 0) {  }
+    
+    decodedToken = parse(decodedToken);
+    if( StructCount(decodedToken) eq 0 ) {
+      error.error = 'Error: processToken: Failed to parse token after decoding: ' & token;
+      debug(error.error);
+      return error;      
+    }
+    
+    if( not StructKeyExists(decodedToken, "appid") ) {
+      error.error = 'Error: processToken: token does not contain application ID.';
+      debug(error.error);
+      return error;
+    }
+    
+    appid = getAppId();
+    if( decodedToken.appid neq appid ) {
+      error.error = "Error: processToken: Application ID in token (#decodedToken.appid#) "
+                    & "did not match application ID in configuration (#appid#).";
+      debug(error.error);
+      return error;
+    }
+    
+    // unix time stamp
+    user.timestamp = '';
+    if(StructKeyExists(decodedToken, 'ts')) {
+      if( IsNumeric(decodedToken.ts) and decodedToken.ts gt 0 ) {   // TODO: integers only
+        user.timestamp = decodedToken.ts;
+      }
+      else {
+        error.error = "Error: processToken: Contents of token considered invalid: "
+                    & "Invalid timestamp";
+        debug(error.error);
+        return error;
+      }
+    }
+    
+    user.uid = '';
+    if(StructKeyExists(decodedToken, 'uid')) {
+      if( REFind("^\w+$", decodedToken.uid) ) {
+        user.uid = decodedToken.uid;
+      }
+      else {
+        error.error = "Error: processToken: Contents of token considered invalid: "
+                    & "Invalid user id";
+        debug(error.error);
+        return error;
+      }
+    }
+    
+    // TODO: usePersistentCookie flag from decodedToken.flags
+    user.context = context;
+    user.token = token;
+    user.valid = true;
+    return user;
+    </cfscript>  
+      
+  </cffunction>
+
   <!--- TODO: getClearCookieResponse --->
   
   <!--- TODO: getConsentUrl, getRefreshConsentTokenUrl, getManageConsentUrl, processConsent,
@@ -177,5 +252,34 @@
     return ToBase64(crypt_key);
     </cfscript>
   </cffunction>
+  
+  <!--- helpers --->
+  <cffunction name="parse" access="public" output="no" returnType="struct"
+    description="parse query string and returns a struct">
+    <cfargument name="input" required="yes" type="string">
+    <cfscript>
+    var pairs = StructNew(); var k = ''; var v = '';
+    var inputs = ''; var i = 1;
+    
+    if( Len(input) eq 0 ) {
+      debug("Error: parse: Null input.");
+      return StructNew();
+    }
+    
+    inputs = ListToArray(input, "&");
+    
+    for(i = 1; i lte ArrayLen(inputs); i = i + 1) {
+      pair = inputs[i];
+      if( Find("=", pair) ) {
+        k = ListFirst(pair, "=");
+        v = ListRest(pair, "=");
+        pairs[k] = v;
+      }
+    }
+    
+    return pairs;
+    </cfscript>
+  </cffunction>
+  
   
 </cfcomponent>
