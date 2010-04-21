@@ -11,6 +11,9 @@
     stoken = "ZDvvs6mFYyWrXGQESz20azlNHxeySRqT5kQkA%2FgCDXmByrkmt9In9wFtpv8SPxl%2BshCCmUe"
            & "VODM0NV3odWZBhdzCHyAMWKUtVhwqCOxwjpQlvQGXFitvk9ozzIRAB9GXMVIOVvsx3Vmk7NgjjL"
            & "Ea56JQlG3ZiV0e3ksjjOyH1%2BC8%2Bly3tjrJED94khVmZJM3";
+
+    decoded_token = "appid=000000004402DF21&uid=cb6758ecf06821bade130e77e1702c4b&ts=1271446184"
+                  & "&sig=dYvOqXcHaXA5rnDTisMzzij/IPVlDdkf03NTHhxAzuc=";
     
     fs = StructNew();
     fs.action = "login";    // form fields
@@ -71,7 +74,7 @@
   
   // decode
   function testDecode() {
-    var token = live.decodeToken(stoken); assertEquals("appid=000000004402df21&uid=cb6758ecf06821bade130e77e1702c4b&ts=1271446184&sig=dyvoqxchaxa5rndtismzzij/ipvlddkf03nthhxazuc=", URLDecode(token)); // not the best thing to test
+    var token = live.decodeToken(stoken); assertEquals(decoded_token, URLDecode(token)); // not the best thing to test
   }
   
   function testDecodeNoKey() {
@@ -88,6 +91,18 @@
     assertEquals("2", s.uid);
     assertEquals("3", s.ts);
     assertEquals("x/y=", s.sig);
+  }
+  
+  // signToken
+  function testSignToken() {
+    var hmac = live.signToken("appid=000000004402DF21&uid=cb6758ecf06821bade130e77e1702c4b&ts=1271446184");
+    assertEquals("dYvOqXcHaXA5rnDTisMzzij/IPVlDdkf03NTHhxAzuc=", hmac);
+  }
+  
+  // validateToken
+  function testValidateToken() {
+    var t = live.validateToken(decoded_token);
+    assertEquals(decoded_token, t);
   }
   
   // processToken

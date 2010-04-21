@@ -134,15 +134,17 @@
   <!--- TODO: getLoginUrl, getLogoutUrl --->
   
   <cffunction name="processToken" access="public" output="no" returnType="struct"
-    description="Decodes and validates the token.">
+    description="Decodes and validates a Web Authentication token. Returns a User 
+                 struct on success. If a context is passed in, it will be returned 
+                 as the context field in the User struct.">
     <cfargument name="token" required="yes" type="string">
     <cfargument name="context" required="no" type="string" default="">
       
     <cfscript>
-    var decodedToken = '';
+    var decodedToken = ''; var parsed = '';
     var user = StructNew(); 
-    var error = StructNew(); error.valid = false;
     var appid = '';
+    var error = StructNew(); error.valid = false;
     
     if(Len(token) eq 0) {
       error.error = 'Error: processToken: Invalid token specified.';
@@ -153,22 +155,22 @@
     decodedToken = decodeAndValidateToken(token);
     //if(Len(decodedToken) eq 0) {  }
     
-    decodedToken = parse(decodedToken);
-    if( StructCount(decodedToken) eq 0 ) {
+    parsed = parse(decodedToken);
+    if( StructCount(parsed) eq 0 ) {
       error.error = 'Error: processToken: Failed to parse token after decoding: ' & token;
       debug(error.error);
       return error;      
     }
     
-    if( not StructKeyExists(decodedToken, "appid") ) {
+    if( not StructKeyExists(parsed, "appid") ) {
       error.error = 'Error: processToken: token does not contain application ID.';
       debug(error.error);
       return error;
     }
     
     appid = getAppId();
-    if( decodedToken.appid neq appid ) {
-      error.error = "Error: processToken: Application ID in token (#decodedToken.appid#) "
+    if( parsed.appid neq appid ) {
+      error.error = "Error: processToken: Application ID in token (#parsed.appid#) "
                     & "did not match application ID in configuration (#appid#).";
       debug(error.error);
       return error;
@@ -176,9 +178,9 @@
     
     // unix time stamp
     user.timestamp = '';
-    if(StructKeyExists(decodedToken, 'ts')) {
-      if( IsNumeric(decodedToken.ts) and decodedToken.ts gt 0 ) {   // TODO: integers only
-        user.timestamp = decodedToken.ts;
+    if(StructKeyExists(parsed, 'ts')) {
+      if( IsNumeric(parsed.ts) and parsed.ts gt 0 ) {   // TODO: integers only
+        user.timestamp = parsed.ts;
       }
       else {
         error.error = "Error: processToken: Contents of token considered invalid: "
@@ -189,9 +191,9 @@
     }
     
     user.uid = '';
-    if(StructKeyExists(decodedToken, 'uid')) {
-      if( REFind("^\w+$", decodedToken.uid) ) {
-        user.uid = decodedToken.uid;
+    if(StructKeyExists(parsed, 'uid')) {
+      if( REFind("^\w+$", parsed.uid) ) {
+        user.uid = parsed.uid;
       }
       else {
         error.error = "Error: processToken: Contents of token considered invalid: "
@@ -205,6 +207,7 @@
     user.context = context;
     user.token = token;
     user.valid = true;
+
     return user;
     </cfscript>  
       
@@ -231,7 +234,7 @@
     
     stoken = decodeToken(token, cryptkey);
     if(Len(stoken)) {
-      // stoken = validateToken(stoken, signkey);
+      stoken = validateToken(stoken, signkey);
     }
     return stoken;
     </cfscript>
@@ -269,6 +272,65 @@
     return ToString(decoded_token);    
     </cfscript>
   </cffunction>
+  
+   <cffunction name="signToken" access="public" output="no" returnType="string"
+    description="Creates a signature for the given string by using the signature key.">
+    <cfargument name="token" required="yes" type="string">
+    <cfargument name="signkey" required="no" type="string" default="">
+    
+    <cfscript>
+    var hmac = ''; var keyspec = ''; var digest = '';
+    
+    if(Len(signkey) eq 0) { signkey = Variables.signKey; }
+    if(Len(signkey) eq 0) {
+      fatal("Error: signToken: Secret key was not set. Aborting.");
+    }
+    
+    // HMAC-SHA256 requires ColdFusion Enterprise, so drop into Java-land
+    try {
+      hmac = createObject('java', "javax.crypto.Mac").getInstance("HmacSHA256");
+      keyspec = createObject('java', 'javax.crypto.spec.SecretKeySpec').
+                init(ToBinary(signkey), "AES");
+      hmac.init(keyspec);
+      digest = hmac.doFinal(token.getBytes());
+    }
+    catch (Exception e) {
+      fatal("Error: signToken: Signing failed: " & token & ", " & e);
+    }
+
+    return Tobase64(digest);
+    </cfscript>
+  </cffunction>
+  
+  <cffunction name="validateToken" access="public" output="no" returnType="string"
+    description="Extracts the signature from the token to validate it.">
+    <cfargument name="token" required="yes" type="string">
+    <cfargument name="signkey" required="no" type="string" default="">
+    
+    <cfscript>
+    var split = ''; var body = ''; var sig = '';
+    
+    if(Len(signkey) eq 0) { signkey = Variables.signKey; }
+    if(Len(signkey) eq 0) {
+      fatal("Error: validateToken: Null token specified.");
+    }
+    
+    split = token.split("&sig="); // Java regex-based split
+    if(ArrayLen(split) neq 2) {
+      debug("Error: validateToken: Invalid token: " & token);
+      return "";
+    }
+    body = split[1]; sig = URLDecode(split[2]);
+    if( sig neq signToken(body, signkey) ) {
+      debug("Error: validateToken: Signature is not valid.");
+      return "";
+    }
+    
+    return token;
+    </cfscript>
+  
+  </cffunction>
+  
   
   <cffunction name="derive" access="public" output="no" returnType="string"
     description="Derives the key, given the secret key and prefix 
