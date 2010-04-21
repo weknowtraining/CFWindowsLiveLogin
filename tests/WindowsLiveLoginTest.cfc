@@ -11,6 +11,11 @@
     stoken = "ZDvvs6mFYyWrXGQESz20azlNHxeySRqT5kQkA%2FgCDXmByrkmt9In9wFtpv8SPxl%2BshCCmUe"
            & "VODM0NV3odWZBhdzCHyAMWKUtVhwqCOxwjpQlvQGXFitvk9ozzIRAB9GXMVIOVvsx3Vmk7NgjjL"
            & "Ea56JQlG3ZiV0e3ksjjOyH1%2BC8%2Bly3tjrJED94khVmZJM3";
+    
+    fs = StructNew();
+    fs.action = "login";    // form fields
+    fs.stoken = stoken;
+    fs.appctx = "myContext";
   }
   
   // AppId
@@ -97,12 +102,34 @@
     live.setAppId("somethingelse");
     var user = live.processToken(stoken);
     assertFalse(user.valid);
-    assertTrue(FindNoCase("did not match application ID", user.error), "error message match");
+    assertTrue(FindNoCase("did not match application ID", user.error), "should match error message");
   }
   
   function testProcessTokenEmpty() {
     var user = live.processToken("");
     assertFalse(user.valid);
+  }
+  
+  // processLogin
+  function testProcessLogin() {
+    var user = live.processLogin(fs);
+    assertTrue(user.valid);
+  }
+  
+  function testProcessLoginNoAction() {
+    var user = '';
+    StructDelete(fs, "action");
+    user = live.processLogin(fs);
+    assertFalse(user.valid, "should not be valid");
+    assertTrue( FindNoCase("No action", user.error), "should match error message");
+  }
+  
+  function testProcessLoginOtherAction() {
+    var user = '';
+    fs.action = "logout";
+    user = live.processLogin(fs);
+    assertFalse(user.valid, "should not be valid");
+    assertTrue( FindNoCase("action ignored", user.error), "should match error message");
   }
   
   </cfscript>

@@ -100,6 +100,36 @@
   <!--- TODO: set/get PolicyUrl, ReturnUrl, BaseUrl, SecureUrl, ConsentBaseUrl --->
   
   <!--- TODO: processLogin --->
+  <cffunction name="processLogin" access="public" output="no" returnType="struct"
+    description="Processes the sign-in response from the Windows Live Login server.">
+    <cfargument name="fs" required="yes" type="struct" description="Form fields">
+    <cfscript>
+    var token = ''; var context = '';
+    var error = StructNew();
+    error.valid = false;
+
+    if( not StructKeyExists(fs, 'action') ) {
+      error.error = "processLogin: No action in query.";
+      debug(error.error);
+      return error;
+    }
+    
+    if( fs.action neq "login" ) {
+      error.error = "processLogin: fs action ignored: " & fs.action;
+      debug(error.error);
+      return error;
+    }
+    
+    if( StructKeyExists(fs, 'stoken') ) {
+      token = fs.stoken;
+    }
+    if( StructKeyExists(fs, 'appctx') ) {
+      context = URLDecode(fs.appctx);
+    }
+    
+    return processToken(token, context);
+    </cfscript>
+  </cffunction>
   
   <!--- TODO: getLoginUrl, getLogoutUrl --->
   
